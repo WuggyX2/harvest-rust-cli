@@ -2,8 +2,19 @@ mod cli;
 mod command;
 use structopt::StructOpt;
 
+use cli::Module;
+
 fn main() {
-    let command = cli::Module::from_args();
+    let command = Module::from_args();
 
     println!("{:?}", command);
+
+    match command {
+        Module::Config(opt) => {
+            opt.run();
+        }
+        _ => {
+            println!("Command has not been implemented yet");
+        }
+    }
 }

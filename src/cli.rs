@@ -1,10 +1,12 @@
 use crate::command::auth::*;
+use crate::command::config::*;
+
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "harvest", about = "Kikkelis kokkelis")]
 pub enum Module {
-    Auth(Auth),
+    Config(Config),
     Sync,
     Log,
 }

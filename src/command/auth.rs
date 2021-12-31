@@ -11,4 +11,3 @@ pub struct Auth {
     #[structopt(short, long)]
     user_agent: String,
 }
-s
