@@ -18,7 +18,7 @@ impl Config {
             Some(v) => {
                 Config::write(&self.name, v);
             }
-            None => println!("Config would run print command for {:?}", self.name),
+            None => Config::print_config_field_value(&self.name),
         }
     }
 
@@ -72,7 +72,42 @@ impl Config {
         }
     }
 
-    fn printValue() {}
+    fn print_config_field_value(name: &SettingFieldName) {
+        let mut home_path = match dirs::home_dir() {
+            Some(folder_path) => folder_path,
+            None => {
+                println!("Could not find users home path");
+                return;
+            }
+        };
+
+        home_path.push(".harvest/config/config.toml");
+        let config_file_path = home_path.as_path();
+
+        if config_file_path.exists() {
+            let file_data = match ConfigFile::open_and_read_from_path(config_file_path) {
+                Ok(values) => values,
+                Err(e) => {
+                    print!(
+                        "Error occured when trying to read the config file. Error: {}",
+                        e
+                    );
+                    return;
+                }
+            };
+
+            match file_data.get_field(&name.to_string()) {
+                Some(v) => {
+                    println!("{}", v);
+                }
+                _ => {
+                    return;
+                }
+            }
+        } else {
+            println!("Config file does not exist. Create one with the config write commands");
+        }
+    }
 }
 
 fn set_file_data_and_update(
