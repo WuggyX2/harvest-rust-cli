@@ -1,8 +1,9 @@
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
+mod config_file;
+use config_file::ConfigFile;
+use std::error::Error;
+use std::path::Path;
 use std::str::FromStr;
+use std::{fmt, fs};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -38,38 +39,51 @@ impl Config {
             let config_file = home_path.as_path();
 
             if config_file.exists() {
-                let mut file = File::open(config_file).expect("Config File not found");
-                let mut contents = String::new();
-                file.read_to_string(&mut contents);
-                let config_file: ConfigFile = toml::from_str(&contents).unwrap();
-                println!("{:?}", config_file);
-            } else {
-                let mut f = File::create(config_file).expect("Could no create file");
-
-                let config = ConfigFile {
-                    account_id: value.to_string(),
-                    access_token: None,
-                    user_agent: None,
+                let file_data = match ConfigFile::open_and_read_from_path(config_file) {
+                    Ok(values) => values,
+                    Err(e) => {
+                        print!(
+                            "Error occured when trying to read the config file. Error: {}",
+                            e
+                        );
+                        return;
+                    }
                 };
 
-                let serialized = toml::to_string(&config).unwrap();
-
-                f.write_all(serialized.as_bytes());
-
-                f.sync_all();
+                match set_file_data_and_update(file_data, name, value, config_file) {
+                    Err(e) => println!("Error occured when updating config file. Error: {:?}", e),
+                    _ => return,
+                };
+            } else {
+                //create a empty config file
+                match set_file_data_and_update(ConfigFile::default(), name, value, config_file) {
+                    Err(e) => println!("Error occured when updating config file. Error: {:?}", e),
+                    _ => return,
+                };
             }
         } else {
             fs::create_dir_all(config_folder).expect("Failed to create settings folder");
+            home_path.push("config.toml");
+            let config_file = home_path.as_path();
+            match set_file_data_and_update(ConfigFile::default(), name, value, config_file) {
+                Err(e) => println!("Error occured when updating config file. Error: {:?}", e),
+                _ => return,
+            };
         }
     }
 
     fn printValue() {}
 }
-#[derive(Serialize, Deserialize, Debug)]
-struct ConfigFile {
-    account_id: String,
-    access_token: Option<String>,
-    user_agent: Option<String>,
+
+fn set_file_data_and_update(
+    mut config_file: ConfigFile,
+    field_name: &SettingFieldName,
+    field_value: &str,
+    file_path: &Path,
+) -> Result<(), Box<dyn Error>> {
+    config_file.set_value(&field_name.to_string(), field_value)?;
+    config_file.save_to_file(file_path)?;
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -89,6 +103,16 @@ impl FromStr for SettingFieldName {
             "account-id" => Ok(SettingFieldName::AccountId),
             "user-agent" => Ok(SettingFieldName::UserAgent),
             _ => Err("Could not parse value for name. Accepted values are access-token, account-id and user-agent"),
+        }
+    }
+}
+
+impl fmt::Display for SettingFieldName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SettingFieldName::AccessToken => write!(f, "access-token"),
+            SettingFieldName::AccountId => write!(f, "account-id"),
+            SettingFieldName::UserAgent => write!(f, "user-agent"),
         }
     }
 }
