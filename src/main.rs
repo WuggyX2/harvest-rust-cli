@@ -1,13 +1,13 @@
 mod cli;
 mod command;
-use structopt::StructOpt;
 
+use clap::StructOpt;
 use cli::Module;
 
 fn main() {
-    let command = Module::from_args();
+    let command = Module::parse();
 
-    println!("{:?}", command);
+    //println!("{:?}", command);
 
     match command {
         Module::Config(opt) => {

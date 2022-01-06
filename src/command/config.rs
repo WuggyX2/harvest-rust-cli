@@ -1,24 +1,34 @@
 mod config_file;
+use clap::Parser;
 use config_file::ConfigFile;
 use std::error::Error;
 use std::path::Path;
 use std::str::FromStr;
 use std::{fmt, fs};
-use structopt::StructOpt;
-
-#[derive(Debug, StructOpt)]
+#[derive(Parser, Debug)]
+#[clap(about = "Set configration values like account id and access token")]
 pub struct Config {
-    name: SettingFieldName,
+    /// name of the setting field. Accepted values are access-token, user-agent and account-id
+    #[clap(required_unless_present = "list")]
+    name: Option<SettingFieldName>,
+    /// Value to be set to the configuration field
     value: Option<String>,
+    /// List the configuration values in the config file
+    #[clap(long = "list", short)]
+    list: bool,
 }
 
 impl Config {
     pub fn run(&self) {
-        match &self.value {
-            Some(v) => {
-                Config::write(&self.name, v);
+        if self.list {
+            Config::print_config_values();
+        } else {
+            match &self.value {
+                Some(v) => {
+                    Config::write(&self.name.as_ref().unwrap(), v);
+                }
+                None => Config::print_config_field_value(&self.name.as_ref().unwrap()),
             }
-            None => Config::print_config_field_value(&self.name),
         }
     }
 
@@ -103,6 +113,55 @@ impl Config {
                 _ => {
                     return;
                 }
+            }
+        } else {
+            println!("Config file does not exist. Create one with the config write commands");
+        }
+    }
+
+    fn print_config_values() {
+        let mut home_path = match dirs::home_dir() {
+            Some(folder_path) => folder_path,
+            None => {
+                println!("Could not find users home path");
+                return;
+            }
+        };
+
+        home_path.push(".harvest/config/config.toml");
+        let config_file_path = home_path.as_path();
+
+        if config_file_path.exists() {
+            let file_data = match ConfigFile::open_and_read_from_path(config_file_path) {
+                Ok(values) => values,
+                Err(e) => {
+                    print!(
+                        "Error occured when trying to read the config file. Error: {}",
+                        e
+                    );
+                    return;
+                }
+            };
+
+            match file_data.get_field("access-token") {
+                Some(v) => {
+                    println!("Access-token={}", v);
+                }
+                _ => {}
+            }
+
+            match file_data.get_field("account-id") {
+                Some(v) => {
+                    println!("Account-Id={}", v);
+                }
+                _ => {}
+            }
+
+            match file_data.get_field("user-agent") {
+                Some(v) => {
+                    println!("User-Agent={}", v);
+                }
+                _ => {}
             }
         } else {
             println!("Config file does not exist. Create one with the config write commands");
