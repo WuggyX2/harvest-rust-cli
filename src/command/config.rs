@@ -1,20 +1,20 @@
 mod config_file;
-use clap::Parser;
+use clap::{ArgEnum, Parser};
 use config_file::ConfigFile;
 use std::error::Error;
 use std::path::Path;
-use std::str::FromStr;
 use std::{fmt, fs};
+
 #[derive(Parser, Debug)]
 #[clap(about = "Set configration values like account id and access token")]
 pub struct Config {
     /// name of the setting field. Accepted values are access-token, user-agent and account-id
-    #[clap(required_unless_present = "list")]
+    #[clap(required_unless_present = "list", arg_enum)]
     name: Option<SettingFieldName>,
     /// Value to be set to the configuration field
     value: Option<String>,
     /// List the configuration values in the config file
-    #[clap(long = "list", short)]
+    #[clap(long, short)]
     list: bool,
 }
 
@@ -180,25 +180,11 @@ fn set_file_data_and_update(
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, ArgEnum)]
 enum SettingFieldName {
     AccountId,
     AccessToken,
     UserAgent,
-}
-
-type ParseError = &'static str;
-
-impl FromStr for SettingFieldName {
-    type Err = ParseError;
-    fn from_str(field_name: &str) -> Result<Self, Self::Err> {
-        match field_name {
-            "access-token" => Ok(SettingFieldName::AccessToken),
-            "account-id" => Ok(SettingFieldName::AccountId),
-            "user-agent" => Ok(SettingFieldName::UserAgent),
-            _ => Err("Could not parse value for name. Accepted values are access-token, account-id and user-agent"),
-        }
-    }
 }
 
 impl fmt::Display for SettingFieldName {
